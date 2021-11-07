@@ -1,13 +1,13 @@
 /*	Author: Richard Tobing, rlumb001@ucr.edu
  *  Partner(s) Name: 
  *	Lab Section: 21
- *	Assignment: Lab #10  Exercise #2
+ *	Assignment: Lab #10  Exercise #3
  *	Exercise Description: [optional - include for your own benefit]
  *
  *	I acknowledge all content contained herein, excluding timer.h or example
  *	code, is my own original work.
 
-	Demo link: https://www.youtube.com/watch?v=Ubbodox4-ug
+	Demo link: https://www.youtube.com/watch?v=VFoPFuz6MZc
  */
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -57,12 +57,17 @@ void ADC_init() {ADCSRA |= (1 << ADEN) | (1 << ADSC) | (1 << ADATE); }
 
 enum threeLEDStates{first, second}threeLEDState;
 enum blinkingLEDStates{on, off}blinkingLEDState;
+enum speakerStates{hi, lo, wait}speakerState;
 enum combineLEDStates{doSomething}combineLEDState;
 
 unsigned char threeLED = 1;
 unsigned char blinkingLED = 0;
 unsigned char out;
-unsigned char cnt = 0;
+unsigned short cnt = 0;
+unsigned char A;
+unsigned char speakerOut = 0;
+
+
 
 
 void ThreeLEDSM(){
@@ -73,6 +78,7 @@ void ThreeLEDSM(){
 		case second: 
 			threeLEDState = first;
 		break;
+		default: threeLEDState = first;	break;
 	}
 	//-----------------------------------------------------
 	switch(threeLEDState){
@@ -91,18 +97,45 @@ void ThreeLEDSM(){
 
 
 void BlinkingLEDSM(){
-	switch(threeLEDState){
+	switch(blinkingLEDState){
 		case on: blinkingLEDState = off;	break;
-		case second: blinkingLEDState = on;	break;
+		case off: blinkingLEDState = on;	break;
+		default: blinkingLEDState = on;		break;
 	}
 	//-----------------------------------------------------
-	switch(threeLEDState){
+	switch(blinkingLEDState){
 		case on: blinkingLED = 8;	break;
 		case off: blinkingLED = 0;	break; 
 	}
 	//PORTB = blinkingLED;
 
 }
+
+
+void SpeakerSM(){
+
+	A = (~PINA) & 7;
+
+	//if(A == 4){
+
+
+		switch(speakerState){
+			case hi: speakerState = lo;		break;
+			case lo: //if(A == 4){speakerState = hi; }	
+				speakerState = 	hi;		break;
+		default: speakerState = lo;			break;
+		}
+	//-----------------------------------------------------
+		switch(speakerState){
+			case hi: speakerOut = 16;	break;
+			case lo: speakerOut = 0;	break; 
+		}
+	}
+
+	
+	
+
+//}
 
 
 
@@ -113,8 +146,8 @@ void CombineLEDSM(){
 	}
 	//-----------------------------------------------------
 	switch(combineLEDState){
-		case doSomething: out = threeLED + blinkingLED;	break;
-		default: out = threeLED + blinkingLED;	break; 
+		case doSomething: out = threeLED + blinkingLED + speakerOut;	break;
+		default: out = threeLED + blinkingLED + speakerOut;	break; 
 	}
 	PORTB = out;
 }
@@ -130,26 +163,31 @@ int main(void)
 	DDRC = 0xFF; PORTC = 0x00;
 	DDRD = 0xFF; PORTD = 0x00;
 	TimerOn();
-	TimerSet(300);
+	TimerSet(2);
 	ADC_init();
 
-	threeLEDState = first;
+	//threeLEDState = first;
 	
 	
 
     while (1) 
-    {
-		ThreeLEDSM();
+    {		
+		A = (~PINA) & 7;
 		
-
-		if(!(cnt%3)){BlinkingLEDSM();	}
+		if(!(cnt%150)){ThreeLEDSM();	}
+		if(!(cnt%500)){BlinkingLEDSM(); }
+		if(A == 4){SpeakerSM();	}
+		//SpeakerSM();
+		CombineLEDSM();	
 		
-		CombineLEDSM();
+		
 		
 				
 		while(!TimerFlag){}
 		TimerFlag = 0;	
 		cnt++;	
+		
     }
 }
+
 
